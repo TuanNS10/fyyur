@@ -5,7 +5,6 @@ from flask import Flask, render_template, request, flash, redirect, url_for
 from flask_moment import Moment
 import logging
 from logging import Formatter, FileHandler
-from config import SQLALCHEMY_DATABASE_URI
 from forms import *
 from models import Artist, Show, Venue
 from utils.util import format_datetime, search
