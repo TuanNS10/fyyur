@@ -1,5 +1,6 @@
 
-from database import db
+from flask_migrate import Migrate
+from models import db
 from flask import Flask, render_template, request, flash, redirect, url_for
 from flask_moment import Moment
 import logging
@@ -18,9 +19,8 @@ app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
 CSRFProtect(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+migration = Migrate(app, db)
 
 app.jinja_env.filters['datetime'] = format_datetime
 
@@ -134,25 +134,28 @@ def create_venue_form():
 
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
-  form = VenueForm(request.form)
-  name = form.name.data
-  try:
-    name_reserved = db.session.query(Venue).filter_by(name=name).first()
-    if name_reserved:
-        flash('venue name reserved')
-        return render_template('forms/new_venue.html',form=form) 
-    new_venue = Venue()
-    form.populate_obj(new_venue)
-    db.session.add(new_venue) 
-    db.session.commit()
-    flash('Venue ' + request.form['name'] + ' was successfully listed!')
-    return render_template('pages/home.html') 
-  except:
-      flash('An error occurred. Venue '+ form.name.data + ' could not be Created!.')
-      db.session.rollback()
-      return render_template('forms/new_venue.html',form=form)
-  finally:
-      db.session.close()
+  form = VenueForm(request.form, meta={'csrf': False})
+  if form.validate():
+    try:
+      name_reserved = db.session.query(Venue).filter_by(name=form.name.data).first()
+      if name_reserved:
+          flash('venue name reserved')
+          return render_template('forms/new_venue.html',form=form) 
+      new_venue = Venue()
+      form.populate_obj(new_venue)
+      db.session.add(new_venue) 
+      db.session.commit()
+      flash('Venue ' + request.form['name'] + ' was successfully listed!') 
+      return render_template('pages/home.html')
+    except:
+        flash('An error occurred. Venue '+ form.name.data + ' could not be Created!.')
+        db.session.rollback()
+        return render_template('forms/new_venue.html',form=form)
+    finally:
+        db.session.close()
+  else:
+      flash('Invalid form submission. Please check the form and try again.')
+      return render_template('forms/new_venue.html', form=form)
 
 @app.route('/venues/<int:venue_id>/edit', methods=['GET'])
 def edit_venue(venue_id):
@@ -209,25 +212,28 @@ def create_artist_submission():
   # called upon submitting the new artist listing form
   # TODO: insert form data as a new Venue record in the db, instead
 
-  form = ArtistForm(request.form)
-  name = form.name.data
-  try:
-     name_reserved = db.session.query(Artist).filter_by(name=name).first()
-     if name_reserved: 
-       flash('artist name reserved')
-       return render_template('forms/new_artist.html',form=form)
-     new_artist = Artist()
-     form.populate_obj(new_artist)
-     db.session.add(new_artist) 
-     db.session.commit()
-     flash('Successfully listed!')
-     return render_template('pages/home.html')  
-  except:
-     flash('Could not be listed.')
-     db.session.rollback()
-     return render_template('forms/new_artist.html',form=form)
-  finally:
-     db.session.close()
+  form = ArtistForm(request.form, meta={'csrf': False})
+  if form.validate():
+    try:
+      name_reserved = db.session.query(Artist).filter_by(name=form.name.data).first()
+      if name_reserved: 
+        flash('artist name reserved')
+        return render_template('forms/new_artist.html',form=form)
+      new_artist = Artist()
+      form.populate_obj(new_artist)
+      db.session.add(new_artist) 
+      db.session.commit()
+      flash('Artist ' + request.form['name'] + ' Successfully listed!')
+      return render_template('pages/home.html')  
+    except:
+      flash('Could not be listed.')
+      db.session.rollback()
+      return render_template('forms/new_artist.html',form=form)
+    finally:
+      db.session.close()
+  else:
+      flash('Invalid form submission. Please check the form and try again.')
+      return render_template('forms/new_artist.html', form=form)
 
 @app.route('/artists')
 def artists():
@@ -382,7 +388,7 @@ def create_show_submission():
       artist = db.session.query(Artist).filter_by(id=artist_id).first()
       if not venue:
         flash("the Venue ID is wrong")
-        return render_template('pages/new_show.html', form=form)
+        return render_template('forms/new_show.html', form=form)
       if not artist:
         flash("the Artist ID is wrong")
         return render_template('forms/new_show.html', form=form)

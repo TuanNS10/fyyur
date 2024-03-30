@@ -21,7 +21,6 @@ class Venue(db.Model):
     website = db.Column(db.String(120))
     seeking_talent = db.Column(db.Boolean)
     seeking_description = db.Column(db.Text)
-    artists = db.relationship("Artist", secondary="show", lazy="joined", cascade='all, delete')
 
 class Artist(db.Model):
     __tablename__ = 'artist'
@@ -37,7 +36,6 @@ class Artist(db.Model):
     website = db.Column(db.String(120))
     seeking_venue = db.Column(db.Boolean)
     seeking_description = db.Column(db.Text)
-    venue = db.relationship("Venue", secondary="show",  lazy="joined", cascade='all, delete')
 
 class Show(db.Model):
     __tablename__ = 'show'
